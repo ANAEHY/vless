@@ -1,8 +1,8 @@
-name: Auto Update Vless Keys (Test Mode)
+name: Auto Update Vless Keys
 
 on:
   schedule:
-    - cron: '*/1 * * * *'  # каждую минуту для теста
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,13 +11,12 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GH_TOKEN }}  # ← это обязательно
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Install Xray
+        run: |
+          wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -O xray.zip
+          unzip xray.zip
+          chmod +x xray
 
       - name: Run update script
         run: python update_vless.py
