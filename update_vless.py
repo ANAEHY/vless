@@ -23,19 +23,28 @@ BACKUP_KEYS = [
 
 def is_key_alive(key: str) -> bool:
     try:
-        # Парсим host и port из vless://uuid@host:port?...
-        parts = key.split('@')[1].split(':')
-        host = parts[0]
-        port_str = parts[1].split('?')[0]
-        port = int(port_str)
+        # Создаём временный config.json для теста
+        config = {
+            "log": {"loglevel": "none"},
+            "inbounds": [{"port": 10808, "protocol": "socks"}],
+            "outbounds": [{
+                "protocol": "vless",
+                "settings": {
+                    "vnext": [{
+                        "address": key.split('@')[1].split(':')[0],
+                        "port": int(key.split(':')[2].split('?')[0]),
+                        "users": [{"id": key.split('://')[1].split('@')[0]}]
+                    }]
+                },
+                "streamSettings": {"network": "tcp"}  # упрощённо, можно парсить
+            }]
+        }
+        with open("test_config.json", "w") as f:
+            json.dump(config, f)
 
-        # Простой тест подключения
-        sock = socket.create_connection((host, port), timeout=5)
-        sock.close()
-        print(f"Живой: {key[:50]}...")
-        return True
-    except Exception as e:
-        print(f"Мёртвый: {key[:50]}... → {e}")
+        result = subprocess.run(["./xray", "run", "-test", "-c", "test_config.json"], timeout=15, capture_output=True)
+        return result.returncode == 0
+    except:
         return False
 
 def update_keys():
