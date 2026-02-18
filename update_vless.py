@@ -1,4 +1,5 @@
 # update_vless.py — автообновление Vless ключей с проверкой
+import subprocess
 import socket
 import random
 import time
@@ -14,19 +15,42 @@ BACKUP_KEYS = [
 
 def is_key_alive(key: str) -> bool:
     try:
-        # Парсим host и port из vless://uuid@host:port?...
-        parts = key.split('@')[1].split(':')
-        host = parts[0]
-        port_str = parts[1].split('?')[0]
-        port = int(port_str)
+        # Парсим ключ (пример для ws + tls)
+        if 'type=ws' in key or 'security=tls' in key or 'security=reality' in key:
+            # Берём sni (если есть) или host
+            sni = "google.com"  # дефолт, можно парсить из ключа
+            if 'sni=' in key:
+                sni = key.split('sni=')[1].split('&')[0]
 
-        # Тест подключения (timeout 5 сек)
-        sock = socket.create_connection((host, port), timeout=5)
-        sock.close()
-        print(f"Живой ключ: {key[:50]}...")
-        return True
+            host_port = key.split('@')[1].split('?')[0]
+            host, port = host_port.split(':')
+            port = port.split('/')[0] if '/' in port else port
+
+            # Тест через curl с TLS handshake
+            cmd = [
+                "curl", "-v", "--max-time", "8",
+                "--resolve", f"{sni}:{port}:{host}",
+                f"https://{sni}:{port}",
+                "--head"
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+
+            if result.returncode == 0 and "HTTP/1.1 200" in result.stderr or "HTTP/2 200" in result.stderr:
+                print(f"Живой (TLS OK): {key[:50]}...")
+                return True
+            else:
+                print(f"Мёртвый (curl fail): {key[:50]}... → {result.stderr[:100]}")
+                return False
+        else:
+            # Старый тест для tcp
+            parts = key.split('@')[1].split(':')
+            host = parts[0]
+            port = int(parts[1].split('?')[0])
+            sock = socket.create_connection((host, port), timeout=5)
+            sock.close()
+            return True
     except Exception as e:
-        print(f"Мёртвый ключ: {key[:50]}... → {e}")
+        print(f"Мёртвый: {key[:50]}... → {e}")
         return False
 
 def update_keys():
