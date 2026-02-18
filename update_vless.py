@@ -2,6 +2,7 @@
 import subprocess
 import socket
 import random
+import ssl
 
 # Запасные ключи (добавь свои реальные запасные)
 BACKUP_KEYS = [
@@ -31,28 +32,41 @@ BACKUP_KEYS = [
 
 def is_key_alive(key: str) -> bool:
     try:
-        # Создаём временный config.json для теста
-        config = {
-            "log": {"loglevel": "none"},
-            "inbounds": [{"port": 10808, "protocol": "socks"}],
-            "outbounds": [{
-                "protocol": "vless",
-                "settings": {
-                    "vnext": [{
-                        "address": key.split('@')[1].split(':')[0],
-                        "port": int(key.split(':')[2].split('?')[0]),
-                        "users": [{"id": key.split('://')[1].split('@')[0]}]
-                    }]
-                },
-                "streamSettings": {"network": "tcp"}  # упрощённо, можно парсить
-            }]
-        }
-        with open("test_config.json", "w") as f:
-            json.dump(config, f)
+        # Улучшенный парсинг host и port
+        if '@' not in key or ':' not in key.split('@')[1]:
+            print(f"Неверный формат ключа: {key[:50]}...")
+            return False
 
-        result = subprocess.run(["./xray", "run", "-test", "-c", "test_config.json"], timeout=15, capture_output=True)
-        return result.returncode == 0
-    except:
+        addr_part = key.split('@')[1].split('?')[0]  # до параметров
+        if ':' not in addr_part:
+            print(f"Нет порта в ключе: {key[:50]}...")
+            return False
+
+        host, port_str = addr_part.rsplit(':', 1)  # берём последний :
+        port = int(port_str.strip())
+
+        # Проверяем, есть ли sni (для TLS)
+        sni = host  # по умолчанию
+        if 'sni=' in key:
+            sni_part = key.split('sni=')[1].split('&')[0].split('#')[0]
+            sni = sni_part.strip()
+
+        print(f"Тест: {host}:{port} (SNI: {sni})")
+
+        # Создаём SSL-сокет для TLS-соединения
+        context = ssl.create_default_context()
+        context.check_hostname = False  # для теста отключаем проверку хоста
+        context.verify_mode = ssl.CERT_NONE  # игнорируем ошибки сертификата
+
+        sock = socket.create_connection((host, port), timeout=8)
+        ssl_sock = context.wrap_socket(sock, server_hostname=sni)
+
+        # Если дошли сюда — handshake прошёл
+        ssl_sock.close()
+        print(f"Живой (TLS handshake OK): {key[:50]}...")
+        return True
+    except Exception as e:
+        print(f"Мёртвый: {key[:50]}... → {str(e)[:100]}")
         return False
 
 def update_keys():
