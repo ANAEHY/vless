@@ -1,12 +1,10 @@
-# update_vless.py — автообновление Vless ключей с проверкой
-import subprocess
+# update_vless.py — автообновление Vless ключей с сохранением заголовков
 import socket
 import random
-import time
 
-# Запасные ключи (твои реальные запасные — добавь 10–50 штук)
+# Запасные ключи (добавь свои реальные запасные)
 BACKUP_KEYS = [
- "vless://ccedb1b1-35f3-46d1-a85a-c699eef5f3e1@fran.scroogethebest.com:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=random&pbk=AYQOZFxjvHN-RIzKYEibwFiFsp03cdlWGdCmyFfuNVc&sid=4fa44664f6a566d3&sni=fran.scroogethebest.com&spx=/#%F0%9F%87%AB%F0%9F%87%B7%20France%2C%20Paris%20%5BBL%5D",
+    "vless://ccedb1b1-35f3-46d1-a85a-c699eef5f3e1@fran.scroogethebest.com:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=random&pbk=AYQOZFxjvHN-RIzKYEibwFiFsp03cdlWGdCmyFfuNVc&sid=4fa44664f6a566d3&sni=fran.scroogethebest.com&spx=/#%F0%9F%87%AB%F0%9F%87%B7%20France%2C%20Paris%20%5BBL%5D",
 "vless://07cd9dbe-21ac-4871-817d-c772687e4b7c@37.16.74.19:2053?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=WckOSneVajAzpH0sZSAFAWPnmwuuEXKZrTICNj5_hHU&sid=4a5b6c7d&sni=www.ibm.com#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Amsterdam%20%28Amsterdam-Zuidoost%29%20%7C%20%F0%9F%8C%90%20Anycast-IP%20%7C%20%5BBL%5D",
 "vless://c73b5c37-0c2b-4d78-8a48-d32bba7432b4@188.212.125.121:443?type=tcp&security=reality&flow=xtls-rprx-vision&fp=chrome&pbk=kEwGhfvGuVsFGuK_udvrytSKGb081PL3Z_hBDAgDzS0&sid=9c2378562188c3cb&sni=nl.kickvpn.ru&path=&host=&spx=/#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Dronten%20%5BBL%5D",
 "vless://f4d11a91-c69e-3a9e-8224-3379e00ae9c4@au04.fjk.wtf:1600?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.apple.com&fp=chrome&pbk=Vc8ycAgKqfRvtXjvGP0ry_U91o5wgrQlqOhHq72HYRs&sid=1bc2c1ef1c&type=tcp&headerType=none#%F0%9F%87%A6%F0%9F%87%BA%20Australia%2C%20Alexandria%20%5BBL%5D",
@@ -20,44 +18,22 @@ BACKUP_KEYS = [
 "vless://3be95058-e4e5-40e2-b51c-db1e6313cb7c@s3.plan-vpn.ru:443?encryption=none&flow=xtls-rprx-vision&type=tcp&security=reality&fp=chrome&sni=s3.plan-vpn.ru&pbk=jWqot3VkePiX8XYqgBNokg55WJJ5nTis3XzX6p2uaWQ&sid=7e348aa57a53b203#%F0%9F%87%AA%F0%9F%87%B8%20Spain%2C%20Madrid%20%28San%20Blas%29%20%5BBL%5D",
 "vless://c73b5c37-0c2b-4d78-8a48-d32bba7432b4@185.170.212.208:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=AquVU8LAYQ3ic9yjqg89WLoaqKydqCO2tiDo78CTNlg&sid=9c2378562188c3cb&sni=es.kickvpn.ru#%F0%9F%87%AA%F0%9F%87%B8%20Spain%2C%20Valencia%20%5BBL%5D",
 
+    # ... твои реальные запасные ключи
 ]
 
 def is_key_alive(key: str) -> bool:
     try:
-        # Парсим ключ (пример для ws + tls)
-        if 'type=ws' in key or 'security=tls' in key or 'security=reality' in key:
-            # Берём sni (если есть) или host
-            sni = "google.com"  # дефолт, можно парсить из ключа
-            if 'sni=' in key:
-                sni = key.split('sni=')[1].split('&')[0]
+        # Парсим host и port из vless://uuid@host:port?...
+        parts = key.split('@')[1].split(':')
+        host = parts[0]
+        port_str = parts[1].split('?')[0]
+        port = int(port_str)
 
-            host_port = key.split('@')[1].split('?')[0]
-            host, port = host_port.split(':')
-            port = port.split('/')[0] if '/' in port else port
-
-            # Тест через curl с TLS handshake
-            cmd = [
-                "curl", "-v", "--max-time", "8",
-                "--resolve", f"{sni}:{port}:{host}",
-                f"https://{sni}:{port}",
-                "--head"
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-
-            if result.returncode == 0 and "HTTP/1.1 200" in result.stderr or "HTTP/2 200" in result.stderr:
-                print(f"Живой (TLS OK): {key[:50]}...")
-                return True
-            else:
-                print(f"Мёртвый (curl fail): {key[:50]}... → {result.stderr[:100]}")
-                return False
-        else:
-            # Старый тест для tcp
-            parts = key.split('@')[1].split(':')
-            host = parts[0]
-            port = int(parts[1].split('?')[0])
-            sock = socket.create_connection((host, port), timeout=5)
-            sock.close()
-            return True
+        # Простой тест подключения
+        sock = socket.create_connection((host, port), timeout=5)
+        sock.close()
+        print(f"Живой: {key[:50]}...")
+        return True
     except Exception as e:
         print(f"Мёртвый: {key[:50]}... → {e}")
         return False
@@ -67,36 +43,50 @@ def update_keys():
 
     try:
         with open(input_file, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f if line.strip() and line.startswith("vless://")]
+            all_lines = f.readlines()
 
-        if not lines:
-            print("Нет ключей в файле")
+        # Сохраняем первые две строки (заголовки) как есть
+        headers = []
+        if len(all_lines) >= 2:
+            headers = all_lines[:2]  # берём ровно первые две строки
+
+        # Остальные строки — это ключи (или мусор)
+        keys = []
+        for line in all_lines[2:]:  # начинаем с третьей строки
+            stripped = line.strip()
+            if stripped.startswith("vless://"):
+                keys.append(stripped)
+
+        if not keys:
+            print("Нет ключей после заголовков")
             return
 
-        new_lines = []
+        new_keys = []
         replaced_count = 0
 
-        for line in lines:
-            if is_key_alive(line):
-                new_lines.append(line)
+        for key in keys:
+            if is_key_alive(key):
+                new_keys.append(key)
             else:
                 if BACKUP_KEYS:
                     replacement = random.choice(BACKUP_KEYS)
-                    new_lines.append(replacement)
+                    new_keys.append(replacement)
                     replaced_count += 1
                     print(f"Заменён → {replacement[:50]}...")
                 else:
-                    new_lines.append(line)  # если нет запасных — оставляем как есть
+                    new_keys.append(key)  # если нет запасных — оставляем
 
-        # Перезаписываем файл
+        # Перезаписываем файл: заголовки + новые ключи
         with open(input_file, "w", encoding="utf-8") as f:
-            f.write("\n".join(new_lines) + "\n")
+            f.writelines(headers)  # сохраняем первые две строки без изменений
+            f.write("\n".join(new_keys) + "\n")  # новые ключи
 
-        print(f"Обновлено! Заменено: {replaced_count}/{len(lines)} ключей")
+        print(f"Обновлено! Заменено: {replaced_count}/{len(keys)} ключей")
+        print("Заголовки сохранены:")
 
     except Exception as e:
         print(f"Ошибка: {e}")
 
 if __name__ == "__main__":
-    print("Запуск теста...")
+    print("Запуск обновления...")
     update_keys()
