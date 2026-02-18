@@ -6,11 +6,20 @@ import time
 
 # Запасные ключи (твои реальные запасные — добавь 10–50 штук)
 BACKUP_KEYS = [
-   "vless://681a694f-7242-4410-b7a0-57106933637d@5.175.134.3:81?type=xhttp&security=reality&fp=&pbk=Rb6WZ6zv_UlQcRiy33kUft1JlTKZ2KGgJt-CvVC5pSI&sid=cf&sni=xapi.ozon.ru&host=xapi.ozon.ru&mode=auto#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%20%5BSNI-RU%5D%20xapi.ozon.ru",
-  "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpvWklvQTY5UTh5aGNRVjhrYTNQYTNB@82.38.31.62:8080?#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Amsterdam%20%28Amsterdam-Noord%29%20%5BBL%5D",
-  "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTprMWRCT21PQjRvcWk3VW1wMzdhMWJR@82.38.31.214:8080#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Amsterdam%20%28Amsterdam-Noord%29%20%5BBL%5D",
-  "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTprMWRCT21PQjRvcWk3VW1wMzdhMWJR@82.38.31.217:8080#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Amsterdam%20%28Amsterdam-Noord%29%20%5BBL%5D",
-  
+ "vless://ccedb1b1-35f3-46d1-a85a-c699eef5f3e1@fran.scroogethebest.com:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=random&pbk=AYQOZFxjvHN-RIzKYEibwFiFsp03cdlWGdCmyFfuNVc&sid=4fa44664f6a566d3&sni=fran.scroogethebest.com&spx=/#%F0%9F%87%AB%F0%9F%87%B7%20France%2C%20Paris%20%5BBL%5D",
+"vless://07cd9dbe-21ac-4871-817d-c772687e4b7c@37.16.74.19:2053?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=WckOSneVajAzpH0sZSAFAWPnmwuuEXKZrTICNj5_hHU&sid=4a5b6c7d&sni=www.ibm.com#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Amsterdam%20%28Amsterdam-Zuidoost%29%20%7C%20%F0%9F%8C%90%20Anycast-IP%20%7C%20%5BBL%5D",
+"vless://c73b5c37-0c2b-4d78-8a48-d32bba7432b4@188.212.125.121:443?type=tcp&security=reality&flow=xtls-rprx-vision&fp=chrome&pbk=kEwGhfvGuVsFGuK_udvrytSKGb081PL3Z_hBDAgDzS0&sid=9c2378562188c3cb&sni=nl.kickvpn.ru&path=&host=&spx=/#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Dronten%20%5BBL%5D",
+"vless://f4d11a91-c69e-3a9e-8224-3379e00ae9c4@au04.fjk.wtf:1600?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.apple.com&fp=chrome&pbk=Vc8ycAgKqfRvtXjvGP0ry_U91o5wgrQlqOhHq72HYRs&sid=1bc2c1ef1c&type=tcp&headerType=none#%F0%9F%87%A6%F0%9F%87%BA%20Australia%2C%20Alexandria%20%5BBL%5D",
+"vless://eb071647-72a6-46be-8e89-ff3d228d52f6@by.cdn.titun.su:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=0L6FE1vTechnKhN9LxFgmcDzqGVIfEQz8ZBGfvzKGzg&sid=cad317b20db4aad2&sni=by.cdn.titun.su#%F0%9F%87%A7%F0%9F%87%BE%20Belarus%2C%20Minsk%20%5BBL%5D",
+"vless://e4fc4761-154f-490e-bbaa-b4fa193f1073@45.148.31.0:15855?path=%2F&security=&encryption=none&host=45.148.31.0&fp=chrome&type=ws#%F0%9F%87%A9%F0%9F%87%B0%20Denmark%2C%20Asperup%20%7C%20%F0%9F%8C%90%20Anycast-IP%20%7C%20%5BBL%5D",
+"vless://6202b230-417c-4d8e-b624-0f71afa9c75d@77.105.163.138:2096?security=tls&type=ws&path=%2F%3Fed%3D2560%26Telegram%F0%9F%87%A8%F0%9F%87%B3%40WangCai2&host=sni.111000.indevs.in&sni=sni.111000.indevs.in&fp=chrome&encryption=none#%F0%9F%87%A8%F0%9F%87%A6%20Canada%2C%20Toronto%20%7C%20%F0%9F%8C%90%20Anycast-IP%20%7C%20%5BBL%5D",
+"vless://6202b230-417c-4d8e-b624-0f71afa9c75d@185.18.250.238:2096/?security=tls&type=ws&path=/?ed=2560&host=sni.jpmj.dev&sni=sni.jpmj.dev&fp=chrome&encryption=none#%F0%9F%87%A8%F0%9F%87%A6%20Canada%2C%20Toronto%20%5BBL%5D",
+"vless://ff6fb512-147d-419a-9672-e131133f7189@93.115.25.194:8443?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=L3X1eh1Jq_6PKJ6LlwjgiWq0XNaDOqCVKgIElJ5nkVA&security=reality&sid=e0ef3d5c0aacb615&sni=tradingview.com&type=tcp#%F0%9F%87%B1%F0%9F%87%B9%20Lithuania%2C%20%C5%A0iauliai%20%5BBL%5D",
+"vless://7177f5c4-f26a-4ab5-820f-62cb6ba649f7@31.170.22.193:47997?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=qq&pbk=cFora2YYa3aZdpWW8vMD9iX97qRKtyLzXv4pWgXoh20&sid=ead461&sni=apple.com&spx=/#%F0%9F%87%B1%F0%9F%87%BB%20Latvia%2C%20Riga%20%28Latgales%20priek%C5%A1pils%C4%93ta%29%20%5BBL%5D",
+"vless://6202b230-417c-4d8e-b624-0f71afa9c75d@185.242.106.215:443?encryption=none&security=tls&sni=sni.111000.indevs.in&insecure=0&allowInsecure=0&type=ws&path=%2F#%F0%9F%87%B1%F0%9F%87%BB%20Latvia%2C%20Riga%20%7C%20%F0%9F%8C%90%20Anycast-IP%20%7C%20%5BBL%5D",
+"vless://3be95058-e4e5-40e2-b51c-db1e6313cb7c@s3.plan-vpn.ru:443?encryption=none&flow=xtls-rprx-vision&type=tcp&security=reality&fp=chrome&sni=s3.plan-vpn.ru&pbk=jWqot3VkePiX8XYqgBNokg55WJJ5nTis3XzX6p2uaWQ&sid=7e348aa57a53b203#%F0%9F%87%AA%F0%9F%87%B8%20Spain%2C%20Madrid%20%28San%20Blas%29%20%5BBL%5D",
+"vless://c73b5c37-0c2b-4d78-8a48-d32bba7432b4@185.170.212.208:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=AquVU8LAYQ3ic9yjqg89WLoaqKydqCO2tiDo78CTNlg&sid=9c2378562188c3cb&sni=es.kickvpn.ru#%F0%9F%87%AA%F0%9F%87%B8%20Spain%2C%20Valencia%20%5BBL%5D",
+
 ]
 
 def is_key_alive(key: str) -> bool:
