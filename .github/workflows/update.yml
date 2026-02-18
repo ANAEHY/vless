@@ -2,7 +2,7 @@ name: Auto Update Vless Keys (Test Mode)
 
 on:
   schedule:
-    - cron: '*/1 * * * *'
+    - cron: '*/1 * * * *'  # каждую минуту для теста
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_TOKEN }}   # ← вот это добавь
+          token: ${{ secrets.GH_TOKEN }}  # ← это обязательно
 
       - name: Set up Python
         uses: actions/setup-python@v5
