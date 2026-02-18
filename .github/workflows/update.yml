@@ -1,0 +1,29 @@
+name: Auto Update Vless Keys (Test Mode)
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'  # Каждую минуту (для теста! Потом смени на '0 */6 * * *' — каждые 6 часов)
+  workflow_dispatch:  # Можно запускать вручную
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run update script
+        run: python update_vless.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add vless.txt
+          git commit -m "Auto update vless keys $(date)" || echo "No changes to commit"
+          git push
