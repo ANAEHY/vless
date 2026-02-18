@@ -1,4 +1,5 @@
 # update_vless.py — автообновление Vless ключей с сохранением заголовков
+import subprocess
 import socket
 import random
 
