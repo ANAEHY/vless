@@ -1,10 +1,12 @@
-# update_vless.py — автообновление Vless ключей с сохранением заголовков
-import socket
+# update_vless.py — автообновление Vless ключей с проверкой через Xray (как в Happ)
+import json
+import subprocess
 import random
+import os
 
-# Твои запасные ключи (вставь сюда свои)
+# Твои запасные ключи (вставь сюда свои реальные)
 BACKUP_KEYS = [
-"vless://f6036ea2-911e-4287-93fb-d3ac2b21135b@node1.telegavpn.org:443?security=reality&type=tcp&headerType=&path=&host=&flow=xtls-rprx-vision&sni=node1.telegavpn.org&fp=&pbk=WvNaAxI0W__qfUKbtysH4IwF155YENlv3PG6crCmPkA&sid=#%F0%9F%87%A6%F0%9F%87%B9%20Austria%2C%20Vienna%20%5BBL%5D",
+    "vless://f6036ea2-911e-4287-93fb-d3ac2b21135b@node1.telegavpn.org:443?security=reality&type=tcp&headerType=&path=&host=&flow=xtls-rprx-vision&sni=node1.telegavpn.org&fp=&pbk=WvNaAxI0W__qfUKbtysH4IwF155YENlv3PG6crCmPkA&sid=#%F0%9F%87%A6%F0%9F%87%B9%20Austria%2C%20Vienna%20%5BBL%5D",
 "vless://ab321a49-bc9c-4bb6-915b-a1fcbc7de49c@27.50.48.155:443?mode=gun&security=tls&encryption=none&alpn=h2,http/1.1&authority=&fp=chrome&type=grpc&serviceName=&sni=vbox1.ping-box.com#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%2C%20Amsterdam%20%5BBL%5D",
 "vless://6202b230-417c-4d8e-b624-0f71afa9c75d@81.85.72.197:443?type=ws&security=tls&path=/&sni=sni.111000.indevs.in#%F0%9F%87%AB%F0%9F%87%AE%20Finland%2C%20Vantaa%20%5BBL%5D",
 "vless://6202b230-417c-4d8e-b624-0f71afa9c75d@185.228.233.22:443?encryption=none&security=tls&sni=sni.111000.v6.navy&insecure=0&allowInsecure=0&type=ws&host=sni.111000.v6.navy&path=%2F%3Fed%3D2560%26Telegram%F0%9F%87%A8%F0%9F%87%B3%2B%40WangCai2#%F0%9F%87%AC%F0%9F%87%AA%20Georgia%2C%20Tbilisi%20%5BBL%5D",
@@ -72,53 +74,81 @@ BACKUP_KEYS = [
 
 ]
 
-def is_key_alive(key: str) -> bool:
+def test_vless_key(key: str) -> bool:
+    """
+    Жёсткий тест ключа через Xray — 1 в 1 как Happ проверяет "активен/неактивен"
+    """
     try:
-        # Улучшенный парсинг host и port
-        if '@' not in key or ':' not in key.split('@')[1]:
-            print(f"Неверный формат ключа: {key[:50]}...")
-            return False
-
-        addr_part = key.split('@')[1].split('?')[0]  # до параметров
-        if ':' not in addr_part:
-            print(f"Нет порта в ключе: {key[:50]}...")
-            return False
-
+        # Простой парсинг ключевых параметров (можно улучшить под все случаи)
+        uuid = key.split('://')[1].split('@')[0]
+        addr_part = key.split('@')[1].split('?')[0]
         host, port_str = addr_part.rsplit(':', 1)
         port = int(port_str.strip())
 
-        # Проверяем, есть ли sni (для TLS/Reality)
-        sni = host  # по умолчанию берём host
-        if 'sni=' in key:
-            sni_part = key.split('sni=')[1].split('&')[0].split('#')[0]
-            sni = sni_part.strip()
+        # Базовый конфиг для теста (SOCKS inbound + VLESS outbound)
+        config = {
+            "log": {"loglevel": "none"},
+            "inbounds": [
+                {"port": 10808, "protocol": "socks", "listen": "127.0.0.1"}
+            ],
+            "outbounds": [
+                {
+                    "protocol": "vless",
+                    "settings": {
+                        "vnext": [
+                            {
+                                "address": host,
+                                "port": port,
+                                "users": [{"id": uuid}]
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "none"  # будет перезаписано ниже
+                    }
+                }
+            ]
+        }
 
-        print(f"Тест: {host}:{port} (SNI: {sni})")
+        # Добавляем параметры из ключа (security, flow, sni и т.д.)
+        params = key.split('?')[1].split('#')[0] if '?' in key else ""
+        param_dict = dict(p.split('=') for p in params.split('&') if '=' in p)
 
-        # Создаём SSL-сокет для реальной проверки TLS-handshake
-        context = ssl.create_default_context()
-        context.check_hostname = False     # для теста отключаем проверку имени хоста
-        context.verify_mode = ssl.CERT_NONE  # игнорируем ошибки сертификата
+        if 'security' in param_dict:
+            config["outbounds"][0]["streamSettings"]["security"] = param_dict['security']
+        if 'sni' in param_dict:
+            config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": param_dict['sni']}
+        if 'flow' in param_dict:
+            config["outbounds"][0]["settings"]["flow"] = param_dict['flow']
 
-        sock = socket.create_connection((host, port), timeout=8)
-        ssl_sock = context.wrap_socket(sock, server_hostname=sni)
+        # Сохраняем временный конфиг
+        with open("test_config.json", "w") as f:
+            json.dump(config, f)
 
-        # Если дошли сюда — handshake прошёл успешно
-        ssl_sock.close()
-        print(f"Живой (TLS handshake OK): {key[:50]}...")
-        return True
+        # Запускаем тест Xray
+        result = subprocess.run(
+            ["./xray", "run", "-test", "-c", "test_config.json"],
+            timeout=20,
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode == 0:
+            print(f"ЖИВОЙ (Xray тест прошёл): {key[:50]}...")
+            return True
+        else:
+            print(f"МЁРТВЫЙ (Xray тест провал): {key[:50]}... → {result.stderr[:150]}")
+            return False
+
     except Exception as e:
-        print(f"Мёртвый: {key[:50]}... → {str(e)[:100]}")
+        print(f"МЁРТВЫЙ (ошибка теста): {key[:50]}... → {str(e)[:100]}")
         return False
 
 def get_live_backup():
-    """
-    Выбирает случайный ЖИВОЙ ключ из резерва.
-    Если все мёртвые — возвращает None.
-    """
-    random.shuffle(BACKUP_KEYS)  # перемешиваем для равномерности
+    random.shuffle(BACKUP_KEYS)
     for key in BACKUP_KEYS:
-        if is_key_alive(key):
+        if test_vless_key(key):
             print(f"Выбран живой запасной: {key[:50]}...")
             return key
     print("Все запасные ключи мёртвые!")
@@ -131,17 +161,9 @@ def update_keys():
         with open(input_file, "r", encoding="utf-8") as f:
             all_lines = f.readlines()
 
-        # Сохраняем первые две строки (заголовки) как есть
-        headers = []
-        if len(all_lines) >= 2:
-            headers = all_lines[:2]  # берём ровно первые две строки
+        headers = all_lines[:2] if len(all_lines) >= 2 else []
 
-        # Остальные строки — это ключи (или мусор)
-        keys = []
-        for line in all_lines[2:]:  # начинаем с третьей строки
-            stripped = line.strip()
-            if stripped.startswith("vless://"):
-                keys.append(stripped)
+        keys = [line.strip() for line in all_lines[2:] if line.strip().startswith("vless://")]
 
         if not keys:
             print("Нет ключей после заголовков")
@@ -151,31 +173,28 @@ def update_keys():
         replaced_count = 0
 
         for key in keys:
-            if is_key_alive(key):
+            if test_vless_key(key):
                 new_keys.append(key)
             else:
-                # Ищем живой запасной
                 live_replacement = get_live_backup()
                 if live_replacement:
                     new_keys.append(live_replacement)
                     replaced_count += 1
-                    print(f"Заменён мёртвый → живой запасной {live_replacement[:50]}...")
+                    print(f"Заменён → {live_replacement[:50]}...")
                 else:
-                    # Если живых запасных нет — оставляем старый (или можно удалить)
                     new_keys.append(key)
-                    print(f"Мёртвый ключ оставлен (нет живых запасных): {key[:50]}...")
+                    print(f"Мёртвый оставлен (нет живых запасных): {key[:50]}...")
 
-        # Перезаписываем файл: заголовки + новые ключи
         with open(input_file, "w", encoding="utf-8") as f:
             f.writelines(headers)
             f.write("\n".join(new_keys) + "\n")
 
-        print(f"Обновлено! Заменено: {replaced_count}/{len(keys)} ключей")
+        print(f"\nОбновлено! Заменено: {replaced_count}/{len(keys)} ключей")
         print("Заголовки сохранены:")
 
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Критическая ошибка: {e}")
 
 if __name__ == "__main__":
-    print("Запуск обновления...")
+    print("Запуск проверки и обновления...")
     update_keys()
